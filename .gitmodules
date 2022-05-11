@@ -10,3 +10,6 @@
 [submodule "lib/solidity-bytes-utils"]
 	path = lib/solidity-bytes-utils
 	url = https://github.com/GNSPS/solidity-bytes-utils
+[submodule "lib/solidity-trigonometry"]
+	path = lib/solidity-trigonometry
+	url = https://github.com/mds1/solidity-trigonometry
