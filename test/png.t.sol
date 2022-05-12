@@ -30,23 +30,64 @@ contract PNGTest is DSTest {
 
     }
 
-    function testReadPalette() public {
+    function _testSimpleImage() public {
+        uint32 width = 2;
+        uint32 height = 2;
 
-        //picture =  abi.encodePacked(bytes1(0x00), bytes1(0x01),bytes1(0x03), bytes1(0x00), bytes1(0x02),bytes1(0x03));
-        picture = pixels.buildImage();
+        picture =  abi.encodePacked(bytes1(0x00), bytes1(0x01), bytes1(0x03), bytes1(0x00), bytes1(0x02),bytes1(0x03));       
 
-        //emit log_uint(palette.length);
-        //emit log_bytes(picture);
+        emit log_bytes(png.rawPNG(width, height, palette, picture, false));
+        emit log_string(png.encodedPNG(width, height, palette, picture, false));
 
-        emit log_uint(false ? 256 : png.calculateBitDepth(palette.length));
+    }
 
+    function _testPixelArray() public {
+
+        bytes32[] memory array = pixels.buildSquaresArray(32, 32);
+
+        for(uint256 i = 0; i<array.length; i++) {
+            emit log_bytes32(array[i]);
+        }
         
 
-        //assertEq(bytes4(0xdb9c973e), png._CRC(png.formatPalette(palette, true),4));
+    }
 
-        //rawPNG(uint256 width, uint256 height, bytes3[] memory palette, bytes memory pixels)
-        emit log_bytes(png.rawPNG(uint32(16), uint32(16), palette, picture, false));
-        emit log_string(png.encodedPNG(uint32(16), uint32(16), palette, picture, false));
+    function _testComplexImage() public {
+        uint32 width = 32;
+        uint32 height = 32;
+
+        picture = pixels.buildSquares(width, height);
+
+        emit log_bytes(png.rawPNG(width, height, palette, picture, false));
+        emit log_string(png.encodedPNG(width, height, palette, picture, false));
+
+
+    }
+
+    function toIndex(uint256 _x, uint256 _y, uint256 _width) public pure returns (uint256 index){
+        index = _y * _width + _x;
+
+    }
+
+    function testBuildPixelArray() public {
+
+        uint256 width = 8;
+        uint256 height = 8;
+
+        uint256 pixels = (width+1) * height;
+        uint256 arraySize;
+
+        if(pixels%32 != 0) {
+            arraySize = pixels/32+1;
+        } else {
+            arraySize = pixels/32;
+        }
+
+        bytes32[] memory pixelArray = new bytes32[](arraySize);
+
+        emit log_uint(arraySize);
+        emit log_uint(pixels);
+
 
 
     }
