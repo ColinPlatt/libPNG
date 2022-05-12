@@ -58,15 +58,15 @@ library png {
         );
     }
 
-    function tRNS(uint256 _bitDepth, uint256 _pixels) internal pure returns (bytes memory) {
+    function _tRNS(uint256 _bitDepth, uint256 _palette) internal pure returns (bytes memory) {
 
         bytes memory tRNSObj = abi.encodePacked(bytes1(0x00));
 
-        for (uint i = 0; i<_pixels; i++) {
+        for (uint i = 0; i<_palette; i++) {
             tRNSObj = abi.encodePacked(tRNSObj, bytes1(0xFF));
         }
 
-        for (uint i = _pixels; i<_bitDepth-1; i++) {
+        for (uint i = _palette; i<_bitDepth-1; i++) {
             tRNSObj = abi.encodePacked(tRNSObj, bytes1(0x00));
         }
 
@@ -77,16 +77,18 @@ library png {
         );
     }
 
-    function rawPNG(uint256 width, uint256 height, bytes3[] memory palette, bytes memory pixels) internal pure returns (bytes memory) {
+    function rawPNG(uint32 width, uint32 height, bytes3[] memory palette, bytes memory pixels, bool force8bit) internal pure returns (bytes memory) {
 
         // Write PLTE
-        bytes memory plte = formatPalette(palette, true);
+        bytes memory plte = formatPalette(palette, force8bit);
 
         bytes4 plteCRC = _CRC(abi.encodePacked(plte),4);
 
         // Write tRNS
         // @TODO add tRNS
-        bytes memory tRNS = png.tRNS(256, pixels.length);
+        uint256 bitDepth = force8bit ? 256 : calculateBitDepth(palette.length);
+
+        bytes memory tRNS = png._tRNS(bitDepth, palette.length);
 
         bytes4 tRNSCRC = _CRC(abi.encodePacked(tRNS),4);
 
@@ -136,8 +138,8 @@ library png {
 
     }
 
-    function encodedPNG(uint32 width, uint32 height, bytes3[] memory palette, bytes memory pixels) internal pure returns (string memory) {
-        return string.concat('data:image/png;base64,', base64encode(rawPNG(width, height, palette, pixels)));
+    function encodedPNG(uint32 width, uint32 height, bytes3[] memory palette, bytes memory pixels, bool force8bit) internal pure returns (string memory) {
+        return string.concat('data:image/png;base64,', base64encode(rawPNG(width, height, palette, pixels, force8bit)));
     }
 
 
