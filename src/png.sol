@@ -130,7 +130,7 @@ library png {
             plteCRC,
             tRNS, 
             tRNSCRC,
-            uint32(zlib.length),
+            uint32(zlib.length-4),
             zlib,
             dataCRC, 
             bytes12(0x0000000049454E44AE426082)
