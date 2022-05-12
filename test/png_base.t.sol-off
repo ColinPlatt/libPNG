@@ -1,0 +1,79 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.8.13;
+
+import "ds-test/test.sol";
+
+import {png} from '../src/png_base.sol';
+
+contract PNG_BaseTest is DSTest {
+
+    struct PIXEL {
+        bytes1 red;
+        bytes1 green;
+        bytes1 blue;
+    }
+
+    PIXEL[] public picture;
+
+    function returnPixel(uint256 index) public view returns (bytes3) {
+        return bytes3(abi.encodePacked(picture[index].red, picture[index].green, picture[index].blue));
+    }
+
+    function setUp() public{
+        
+        picture.push(
+            PIXEL({
+                red: 0xFF,
+                green: 0x00,
+                blue:  0x00
+            })
+        );
+
+        picture.push(
+            PIXEL({
+                red: 0x00,
+                green: 0xFF,
+                blue:  0x00
+            })
+        );
+
+        picture.push(
+            PIXEL({
+                red: 0x00,
+                green: 0x00,
+                blue:  0xFF
+            })
+        );
+
+    }
+
+    function testPictureCreation() public {
+        emit log_bytes(abi.encodePacked(returnPixel(png.coordinatesToIndex(0, 0, 3))));
+        emit log_bytes(abi.encodePacked(returnPixel(png.coordinatesToIndex(1, 0, 3))));
+        emit log_bytes(abi.encodePacked(returnPixel(png.coordinatesToIndex(2, 0, 3))));
+    }
+
+    function testPNGBytes() public {
+
+        bytes memory fullPicture = abi.encodePacked(returnPixel(0), returnPixel(2), returnPixel(2));
+
+        emit log_bytes(png.rawPNG(uint32(3), uint32(3), fullPicture));
+        emit log_string(string(png.encodedPNG(uint32(3), uint32(1), fullPicture)));
+
+    }
+
+    function test2lsb() public {
+
+        bytes2 input = bytes2(uint16(10));
+
+        emit log_bytes(abi.encodePacked(png.byte2lsb(input)));
+        emit log_bytes(abi.encodePacked(~png.byte2lsb(input)));
+
+    }
+
+
+
+
+
+}
+    
