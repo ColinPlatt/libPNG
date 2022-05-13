@@ -41,20 +41,9 @@ contract PNGTest is DSTest {
 
     }
 
-    function _testPixelArray() public {
-
-        bytes32[] memory array = pixels.buildSquaresArray(32, 32);
-
-        for(uint256 i = 0; i<array.length; i++) {
-            emit log_bytes32(array[i]);
-        }
-        
-
-    }
-
-    function _testComplexImage() public {
-        uint32 width = 32;
-        uint32 height = 32;
+    function testComplexImage() public {
+        uint32 width = 64;
+        uint32 height = 64;
 
         picture = pixels.buildSquares(width, height);
 
@@ -65,28 +54,26 @@ contract PNGTest is DSTest {
     }
 
     function toIndex(uint256 _x, uint256 _y, uint256 _width) public pure returns (uint256 index){
-        index = _y * _width + _x;
+        index = _y * (_width +1) + _x + 1;
 
     }
 
     function testBuildPixelArray() public {
 
-        uint256 width = 8;
-        uint256 height = 8;
+        uint256 width = 256;
+        uint256 height = 256;
 
-        uint256 pixels = (width+1) * height;
-        uint256 arraySize;
+        bytes memory pixelArray = new bytes((width+1) * height);
 
-        if(pixels%32 != 0) {
-            arraySize = pixels/32+1;
-        } else {
-            arraySize = pixels/32;
+        for (uint256 i = 0; i < 200; i++) {
+            for (uint256 j = 0; j < 200; j++) {
+                pixelArray[toIndex(i + 40, j+20, width)] = bytes1(0x01);
+                pixelArray[toIndex(i + 30, j+30, width)] = bytes1(0x02);
+                pixelArray[toIndex(i + 20, j+40, width)] = bytes1(0x03);
+                }
         }
 
-        bytes32[] memory pixelArray = new bytes32[](arraySize);
-
-        emit log_uint(arraySize);
-        emit log_uint(pixels);
+        emit log_bytes(pixelArray);
 
 
 
