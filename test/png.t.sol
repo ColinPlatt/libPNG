@@ -24,13 +24,8 @@ contract PNGTest is DSTest {
 
     }
 
-    function testtRNS() public {
-        emit log_bytes(png._tRNS(4, 3));
-        emit log_bytes(abi.encodePacked(png._CRC(png._tRNS(4, 3),4)));
 
-    }
-
-    function _testSimpleImage() public {
+    function testSimpleImage() public {
         uint32 width = 2;
         uint32 height = 2;
 
@@ -42,8 +37,8 @@ contract PNGTest is DSTest {
     }
 
     function testComplexImage() public {
-        uint32 width = 64;
-        uint32 height = 64;
+        uint32 width = 256;
+        uint32 height = 256;
 
         picture = pixels.buildSquares(width, height);
 
@@ -53,32 +48,11 @@ contract PNGTest is DSTest {
 
     }
 
-    function toIndex(uint256 _x, uint256 _y, uint256 _width) public pure returns (uint256 index){
-        index = _y * (_width +1) + _x + 1;
+    function testViewImage() public {
+
+        emit log_string(pixels.viewImage());
 
     }
-
-    function testBuildPixelArray() public {
-
-        uint256 width = 256;
-        uint256 height = 256;
-
-        bytes memory pixelArray = new bytes((width+1) * height);
-
-        for (uint256 i = 0; i < 200; i++) {
-            for (uint256 j = 0; j < 200; j++) {
-                pixelArray[toIndex(i + 40, j+20, width)] = bytes1(0x01);
-                pixelArray[toIndex(i + 30, j+30, width)] = bytes1(0x02);
-                pixelArray[toIndex(i + 20, j+40, width)] = bytes1(0x03);
-                }
-        }
-
-        emit log_bytes(pixelArray);
-
-
-
-    }
-
 
 
 }

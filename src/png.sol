@@ -79,19 +79,16 @@ library png {
 
     function rawPNG(uint32 width, uint32 height, bytes3[] memory palette, bytes memory pixels, bool force8bit) internal pure returns (bytes memory) {
 
+        uint256[256] memory crcTable = calcCrcTable();
+
         // Write PLTE
         bytes memory plte = formatPalette(palette, force8bit);
 
-        bytes4 plteCRC = _CRC(abi.encodePacked(plte),4);
-
         // Write tRNS
-        // @TODO add tRNS
-        uint256 bitDepth = force8bit ? 256 : calculateBitDepth(palette.length);
-
-        bytes memory tRNS = png._tRNS(bitDepth, palette.length);
-
-        bytes4 tRNSCRC = _CRC(abi.encodePacked(tRNS),4);
-
+        bytes memory tRNS = png._tRNS(
+            force8bit ? 256 : calculateBitDepth(palette.length),
+            palette.length
+            );
 
         // Write IHDR
         bytes21 header = bytes21(abi.encodePacked(
@@ -103,36 +100,28 @@ library png {
             )
         );
 
-        bytes4 headerCRC = _CRC(abi.encodePacked(header),4);
-
-        // we add a line filter to the pixels byte string
-
-        bytes1 bits = pixels.length > 65535 ? bytes1(0x00) :  bytes1(0x01);
-
         bytes7 deflate = bytes7(
             abi.encodePacked(
                 bytes2(0x78DA),
-                bits,
+                pixels.length > 65535 ? bytes1(0x00) :  bytes1(0x01),
                 png.byte2lsb(uint16(pixels.length)),
                 ~png.byte2lsb(uint16(pixels.length))
             )
         );
 
         bytes memory zlib = abi.encodePacked('IDAT', deflate, pixels, _adler32(pixels));
-        
-        bytes4 dataCRC = _CRC(abi.encodePacked(zlib), 0);
 
         return abi.encodePacked(
             bytes8(0x89504E470D0A1A0A),
             header, 
-            headerCRC,
+            _CRC(crcTable, abi.encodePacked(header),4),
             plte, 
-            plteCRC,
+            _CRC(crcTable, abi.encodePacked(plte),4),
             tRNS, 
-            tRNSCRC,
+            _CRC(crcTable, abi.encodePacked(tRNS),4),
             uint32(zlib.length-4),
             zlib,
-            dataCRC, 
+            _CRC(crcTable, abi.encodePacked(zlib), 0), 
             bytes12(0x0000000049454E44AE426082)
         );
 
@@ -170,30 +159,30 @@ library png {
     function calcCrcTable() internal pure returns (uint256[256] memory crcTable) {
         uint256 c;
 
-        for(uint256 n = 0; n < 256; n++) {
-            c = n;
-            for (uint256 k = 0; k < 8; k++) {
-                if(c & 1 == 1) {
-                    c = 0xedb88320 ^ (c >>1);
-                } else {
-                    c = c >> 1;
+        unchecked{
+            for(uint256 n = 0; n < 256; n++) {
+                c = n;
+                for (uint256 k = 0; k < 8; k++) {
+                    if(c & 1 == 1) {
+                        c = 0xedb88320 ^ (c >>1);
+                    } else {
+                        c = c >> 1;
+                    }
                 }
+                crcTable[n] = c;
             }
-            crcTable[n] = c;
         }
     }
 
-    function _CRC(bytes memory chunk, uint256 offset) internal pure returns (bytes4) {
+    function _CRC(uint256[256] memory crcTable, bytes memory chunk, uint256 offset) internal pure returns (bytes4) {
 
-        uint256[256] memory crcTable = calcCrcTable();
-
-        bytes1[] memory data = _toBuffer(chunk);
-        uint256 len = data.length;
+        uint256 len = chunk.length;
 
         uint32 c = uint32(0xffffffff);
-
-        for(uint256 n = offset; n < len; n++) {
-            c = uint32(crcTable[(c^uint8(data[n])) & 0xff] ^ (c >> 8));
+        unchecked{
+            for(uint256 n = offset; n < len; n++) {
+                c = uint32(crcTable[(c^uint8(chunk[n])) & 0xff] ^ (c >> 8));
+            }
         }
         return bytes4(c)^0xffffffff;
 
@@ -204,12 +193,13 @@ library png {
         uint32 a = 1;
         uint32 b = 0;
 
-        bytes1[] memory _buffer = _toBuffer(_data);
-        uint256 _len = _buffer.length;
+        uint256 _len = _data.length;
 
-        for (uint256 i = 0; i < _len; i++) {
-            a = (a + uint8(_buffer[i])) % 65521; //may need to convert to uint32
-            b = (b + a) % 65521;
+        unchecked {
+            for (uint256 i = 0; i < _len; i++) {
+                a = (a + uint8(_data[i])) % 65521; //may need to convert to uint32
+                b = (b + a) % 65521;
+            }
         }
 
         return bytes4((b << 16) | a);
@@ -238,49 +228,51 @@ library png {
         bytes1[] memory byteArray = new bytes1[](_length);
         bytes memory tempBytes;
 
-        for (uint256 i = 0; i<_length; i++) {
-            assembly {
-                // Get a location of some free memory and store it in tempBytes as
-                // Solidity does for memory variables.
-                tempBytes := mload(0x40)
+        unchecked{
+            for (uint256 i = 0; i<_length; i++) {
+                assembly {
+                    // Get a location of some free memory and store it in tempBytes as
+                    // Solidity does for memory variables.
+                    tempBytes := mload(0x40)
 
-                // The first word of the slice result is potentially a partial
-                // word read from the original array. To read it, we calculate
-                // the length of that partial word and start copying that many
-                // bytes into the array. The first word we copy will start with
-                // data we don't care about, but the last `lengthmod` bytes will
-                // land at the beginning of the contents of the new array. When
-                // we're done copying, we overwrite the full first word with
-                // the actual length of the slice.
-                let lengthmod := and(1, 31)
+                    // The first word of the slice result is potentially a partial
+                    // word read from the original array. To read it, we calculate
+                    // the length of that partial word and start copying that many
+                    // bytes into the array. The first word we copy will start with
+                    // data we don't care about, but the last `lengthmod` bytes will
+                    // land at the beginning of the contents of the new array. When
+                    // we're done copying, we overwrite the full first word with
+                    // the actual length of the slice.
+                    let lengthmod := and(1, 31)
 
-                // The multiplication in the next line is necessary
-                // because when slicing multiples of 32 bytes (lengthmod == 0)
-                // the following copy loop was copying the origin's length
-                // and then ending prematurely not copying everything it should.
-                let mc := add(add(tempBytes, lengthmod), mul(0x20, iszero(lengthmod)))
-                let end := add(mc, 1)
+                    // The multiplication in the next line is necessary
+                    // because when slicing multiples of 32 bytes (lengthmod == 0)
+                    // the following copy loop was copying the origin's length
+                    // and then ending prematurely not copying everything it should.
+                    let mc := add(add(tempBytes, lengthmod), mul(0x20, iszero(lengthmod)))
+                    let end := add(mc, 1)
 
-                for {
-                    // The multiplication in the next line has the same exact purpose
-                    // as the one above.
-                    let cc := add(add(add(_bytes, lengthmod), mul(0x20, iszero(lengthmod))), i)
-                } lt(mc, end) {
-                    mc := add(mc, 0x20)
-                    cc := add(cc, 0x20)
-                } {
-                    mstore(mc, mload(cc))
+                    for {
+                        // The multiplication in the next line has the same exact purpose
+                        // as the one above.
+                        let cc := add(add(add(_bytes, lengthmod), mul(0x20, iszero(lengthmod))), i)
+                    } lt(mc, end) {
+                        mc := add(mc, 0x20)
+                        cc := add(cc, 0x20)
+                    } {
+                        mstore(mc, mload(cc))
+                    }
+
+                    mstore(tempBytes, 1)
+
+                    //update free-memory pointer
+                    //allocating the array padded to 32 bytes like the compiler does now
+                    mstore(0x40, and(add(mc, 31), not(31)))
                 }
 
-                mstore(tempBytes, 1)
+                byteArray[i] = bytes1(tempBytes);
 
-                //update free-memory pointer
-                //allocating the array padded to 32 bytes like the compiler does now
-                mstore(0x40, and(add(mc, 31), not(31)))
             }
-
-            byteArray[i] = bytes1(tempBytes);
-
         }
         
         return byteArray;
